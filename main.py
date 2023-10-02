@@ -17,7 +17,7 @@ import say
 import randoms_memes
 
 #остальные библиотеки
-import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from telegram.ext import (
     ApplicationBuilder,
@@ -128,14 +128,22 @@ class ReminderBot:
     async def memes_handler(self, update, context):
         await context.bot.send_message(
             text="Выбирите желаемый продукт: " "                                                                                                "
-                 "/random_memes - случайный мем" "                                                                                              "
+                 "/randoms - случайный мем" "                                                                                              "
                  "/categories - мемы отсортированные по категориям"
             ,
             chat_id=update.effective_chat.id,
         )
         self.states[update.effective_chat.id] = ReminderBotState.DEFAULT
 
-    async def randoms_handler(self, update):
+    async def randoms_handler(self, update, context):
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=randoms_memes.random_memes(),
+        )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="/next чтобы посмотреть следующий мем",
+        )
         self.states[update.effective_chat.id] = ReminderBotState.WAITING_FOR_EVENT_MEMES_RANDOMS
 
     async def categories_handler(self, update, context):
@@ -187,7 +195,7 @@ class ReminderBot:
         )
         self.states[update.effective_chat.id] = ReminderBotState.WAITING_FOR_EVENT_WIKI
     async def text_handler(self, update, context):
-        global count
+        global count_unforgettable
         chat_id = update.effective_chat.id
         if chat_id not in self.states:
             self.states[chat_id] = ReminderBotState.DEFAULT
@@ -195,7 +203,7 @@ class ReminderBot:
         if self.states[chat_id] == ReminderBotState.DEFAULT:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=say.speake(update.message.text),
+                text=say.speake(update.message.text, chat_id),
             )
             self.states[chat_id] = ReminderBotState.DEFAULT
         elif self.states[chat_id] == ReminderBotState.WAITING_FOR_EVENT_WIKI:
@@ -206,11 +214,16 @@ class ReminderBot:
             self.states[chat_id] = ReminderBotState.DEFAULT
 
         elif self.states[chat_id] == ReminderBotState.WAITING_FOR_EVENT_MEMES_RANDOMS:
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=randoms_memes.random_memes(),
+            )
+            print("хой")
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=randoms_memes.random_memes(),
+                text="/next чтобы посмотреть следующий мем",
             )
-            self.states[chat_id] = ReminderBotState.DEFAULT
+            self.states[chat_id] = ReminderBotState.WAITING_FOR_EVENT_MEMES_RANDOMS
 
         elif self.states[chat_id] == ReminderBotState.WAITING_FOR_EVENT_TEXT:
             self.events[chat_id] = Event()
@@ -222,27 +235,29 @@ class ReminderBot:
             )
             self.states[chat_id] = ReminderBotState.WAITING_FOR_EVENT_TIME
         elif self.states[chat_id] == ReminderBotState.WAITING_FOR_EVENT_TIME:
-            time = datetime.datetime.strptime(
+            time = datetime.strptime(
                 update.message.text, "%d.%m.%Y %H:%M"
             )
+            time += timedelta(hours=-3)
             self.events[chat_id].time = time
             context.job_queue.run_once(
                 self.process_event_job,
                 self.events[chat_id].time,
                 data=self.events[chat_id],
+                chat_id=chat_id,
             )
 
-            self.events[chat_id].time = time
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="Событие добавлено"
             )
-            count -= 1
+            count_unforgettable -= 1
             self.states[chat_id] = ReminderBotState.DEFAULT
 
     async def process_event_job(self, context):
         event = context.job.data
-        await context.bot.send_message(chat_id=event.chat_id, text=event.text)
+        for i in range(3):
+            await context.bot.send_message(chat_id=event.chat_id, text=event.text)
 
 
 if __name__ == "__main__":

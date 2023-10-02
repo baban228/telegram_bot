@@ -2,6 +2,7 @@ import wikipedia, re
 
 def getwiki(s):
     try:
+        wikipedia.set_lang("ru")
         ny = wikipedia.page(s)
         wikitext = ny.content[:1000]
         wikimas = wikitext.split('.')

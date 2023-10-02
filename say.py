@@ -32,8 +32,8 @@ def answer(text):
         return 'Круто!'
 
 
-def speake(context):
-    f = open(str(context) + 'CLStore_log.txt', 'a', encoding='UTF-8')
+def speake(context, chat_id):
+    f = open("logs/" + str(chat_id) + '_CLStore_log.txt', 'a', encoding='UTF-8')
     s = answer(context)
     f.write('u: ' + context + '\n' + s + '\n')
     f.close()
